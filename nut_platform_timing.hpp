@@ -6,6 +6,24 @@ namespace nut {
 
   namespace platform {
 
+    inline void sleep( uint32_t milliseconds )
+    {
+      ::SleepEx( milliseconds, TRUE );
+    }
+
+    inline int64_t unixTimestamp()
+    {
+      constexpr int64_t c_unixTimeStart = 0x019DB1DED53E8000;
+      constexpr int64_t c_ticksPerSecond = 10000000;
+
+      FILETIME ft;
+      GetSystemTimeAsFileTime( &ft );
+
+      LARGE_INTEGER li = { .u { .LowPart = ft.dwLowDateTime, .HighPart = static_cast<LONG>( ft.dwHighDateTime ) } };
+
+      return ( li.QuadPart - c_unixTimeStart ) / c_ticksPerSecond;
+    }
+
     //! \class PerformanceTimer
     //! Native performance timer implementation for high-precision timing of tasks.
     class PerformanceTimer {
