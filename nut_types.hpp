@@ -10,6 +10,9 @@
 #include <string>
 
 #include <windows.h>
+#include <strsafe.h>
+
+#define NUT_CONFIG_WANT_THREAD_NAMING
 
 namespace nut {
 
