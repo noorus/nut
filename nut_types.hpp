@@ -7,6 +7,7 @@
 #include <ranges>
 #include <span>
 #include <vector>
+#include <string>
 
 #include <windows.h>
 
@@ -20,6 +21,10 @@ namespace nut {
   using std::optional;
   using std::span;
   using std::vector;
+  using std::string;
+  using std::wstring;
+  using std::string_view;
+  using std::wstring_view;
 
 #define NUT_RUNTIME_EXCEPT( rsn ) throw nut::RuntimeError( rsn );
 
