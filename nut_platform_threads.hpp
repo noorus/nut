@@ -25,6 +25,7 @@ namespace nut {
       Thread( const string& name, Callback callback, void* argument );
       virtual bool start();
       virtual void stop();
+      inline uint32_t id() const { return id_; }
       //! Returns true if thread is alive within given time
       virtual bool waitFor( uint32_t milliseconds = INFINITE ) const;
       //! Returns true if thread is alive
