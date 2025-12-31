@@ -16,10 +16,10 @@ namespace nut {
       SRWLOCK lock_ {};
     public:
       RWLock() { InitializeSRWLock( &lock_ ); }
-      inline void lock() { AcquireSRWLockExclusive( &lock_ ); }
-      inline void unlock() { ReleaseSRWLockExclusive( &lock_ ); }
-      inline void lockShared() { AcquireSRWLockShared( &lock_ ); }
-      inline void unlockShared() { ReleaseSRWLockShared( &lock_ ); }
+      inline void lock() const { AcquireSRWLockExclusive( const_cast<SRWLOCK*>( &lock_ ) ); }
+      inline void unlock() const { ReleaseSRWLockExclusive( const_cast<SRWLOCK*>( &lock_ ) ); }
+      inline void lockShared() const { AcquireSRWLockShared( const_cast<SRWLOCK*>( &lock_ ) ); }
+      inline void unlockShared() const { ReleaseSRWLockShared( const_cast<SRWLOCK*>( &lock_ ) ); }
     };
 
     #pragma warning( pop )
@@ -30,14 +30,18 @@ namespace nut {
   //! Automation for scoped acquisition and release of an RWLock.
   class ScopedRWLock {
   protected:
-    platform::RWLock* lock_;
+    const platform::RWLock* lock_;
     bool exclusive_;
-    bool locked_;
+    bool locked_ = true;
+  private:
+    // No copying or assignment
+    ScopedRWLock( ScopedRWLock const & ) = delete;
+    ScopedRWLock& operator=( ScopedRWLock const & ) = delete;
   public:
     //! Constructor.
     //! \param  lock      The lock to acquire.
     //! \param  exclusive (Optional) true to acquire in exclusive mode, false for shared.
-    ScopedRWLock( platform::RWLock* lock, bool exclusive = true ): lock_( lock ), exclusive_( exclusive ), locked_( true )
+    explicit ScopedRWLock( const platform::RWLock* lock, bool exclusive = true ): lock_( lock ), exclusive_( exclusive )
     {
       exclusive_ ? lock_->lock() : lock_->lockShared();
     }
