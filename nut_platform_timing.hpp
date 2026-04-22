@@ -28,10 +28,10 @@ namespace nut {
     //! Native performance timer implementation for high-precision timing of tasks.
     class PerformanceTimer {
     private:
-      LARGE_INTEGER frequency_;
-      LARGE_INTEGER time_;
+      LARGE_INTEGER frequency_ { { 0, 0 } };
+      LARGE_INTEGER time_ { { 0, 0 } };
     public:
-      PerformanceTimer(): frequency_ { { 0, 0 } }, time_ { { 0, 0 } }
+      PerformanceTimer()
       {
         if ( !QueryPerformanceFrequency( &frequency_ ) )
           NUT_RUNTIME_EXCEPT( "Couldn't query HPC frequency" );
@@ -53,19 +53,22 @@ namespace nut {
 
     //! \class PerformanceClock
     //! Native performance clock implementation for high-precision loop delta timing.
+
+#ifdef NUT_PLATFORM_WINDOWS
+
     class PerformanceClock {
     private:
-      LARGE_INTEGER current_;
+      LARGE_INTEGER current_ { { 0, 0 } };
       double frequency_ = 0.0;
       double inverse_ = 0.0;
     public:
-      PerformanceClock(): current_ { { 0, 0 } }
+      PerformanceClock()
       {
         LARGE_INTEGER frequency;
         if ( !QueryPerformanceFrequency( &frequency ) )
           NUT_RUNTIME_EXCEPT( "Couldn't query HPC frequency" );
         frequency_ = static_cast<double>( frequency.QuadPart );
-        inverse_ = ( 1000000.0 / frequency.QuadPart );
+        inverse_ = ( 1000000.0 / frequency_ );
       }
       //! Call this once before entering whatever loop is going to then keep calling update()
       inline void init()
@@ -103,6 +106,56 @@ namespace nut {
         return static_cast<double>( peekMicroseconds() ) * 0.001;
       }
     };
+
+#elif NUT_PLATFORM_LINUX
+
+# define SEC_TO_NANOSEC( sec ) ( ( sec ) * ( 1000LL * 1000LL * 1000LL ) )
+# define NANOSEC_TO_SEC( nanosec ) ( ( nanosec ) / ( 1000LL * 1000LL * 1000LL ) )
+
+    class PerformanceClock {
+    private:
+      int64_t current_ = 0;
+      double frequency_ = 0.0;
+      double inverse_ = 0.0;
+    public:
+      PerformanceClock()
+      {
+        timespec res_s;
+        if ( clock_getres( CLOCK_MONOTONIC_RAW, &res_s ) < 0 )
+          NUT_RUNTIME_EXCEPT( "clock_getres failed" );
+        int64_t res = SEC_TO_NANOSEC( res_s.tv_sec ) + res_s.tv_nsec;
+        frequency_ = static_cast<double>( SEC_TO_NANOSEC( 1 ) );
+      }
+      //! Call this once before entering whatever loop is going to then keep calling update()
+      inline void init()
+      {
+        timespec val_s;
+        if ( clock_gettime( CLOCK_MONOTONIC_RAW, &val_s ) < 0 )
+          NUT_RUNTIME_EXCEPT( "clock_gettime failed" );
+        current_ = SEC_TO_NANOSEC( val_s.tv_sec ) + val_s.tv_nsec;
+      }
+      //! Returns the time in seconds since the last call to update()
+      inline double update()
+      {
+        timespec val_s;
+        clock_gettime( CLOCK_MONOTONIC_RAW, &val_s );
+        int64_t new_ = SEC_TO_NANOSEC( val_s.tv_sec ) + val_s.tv_nsec;
+        auto delta = ( new_ - current_ );
+        current_ = new_;
+        return static_cast<double>( delta ) / frequency_;
+      }
+      //! Returns the time in seconds since the last call to update() without "resetting" the counter
+      inline double peek()
+      {
+        timespec val_s;
+        clock_gettime( CLOCK_MONOTONIC_RAW, &val_s );
+        int64_t new_ = SEC_TO_NANOSEC( val_s.tv_sec ) + val_s.tv_nsec;
+        auto delta = ( new_ - current_ );
+        return static_cast<double>( delta ) / frequency_;
+      }
+    };
+
+#endif
 
   }
 

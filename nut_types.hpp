@@ -1,5 +1,11 @@
 #pragma once
 
+#ifdef _MSC_VER
+# define NUT_PLATFORM_WINDOWS
+#else
+# define NUT_PLATFORM_LINUX
+#endif
+
 #include <cstdint>
 #include <exception>
 #include <stdexcept>
@@ -9,8 +15,15 @@
 #include <vector>
 #include <string>
 
-#include <windows.h>
-#include <strsafe.h>
+#ifdef NUT_PLATFORM_WINDOWS
+# include <windows.h>
+# include <strsafe.h>
+#elif NUT_PLATFORM_LINUX
+# include <sys/types.h>
+# include <inttypes.h>
+# include <unistd.h> // sleep
+# include <time.h> // clock
+#endif
 
 #ifdef NUT_CUSTOM_INCLUDE
 # include NUT_CUSTOM_INCLUDE
@@ -49,6 +62,6 @@ namespace nut {
   using std::wstring;
 #endif
 
-#define NUT_RUNTIME_EXCEPT( rsn ) throw nut::RuntimeError( rsn );
+#define NUT_RUNTIME_EXCEPT( rsn ) throw nut::RuntimeError( rsn )
 
 }
