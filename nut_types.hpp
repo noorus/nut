@@ -38,6 +38,8 @@ namespace nut {
 
   using RuntimeError = std::runtime_error;
 
+  using std::size_t;
+
   using std::optional;
   using std::span;
   using std::string_view;
