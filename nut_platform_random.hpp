@@ -18,7 +18,7 @@ namespace nut {
           NUT_RUNTIME_EXCEPT( "CryptAcquireContextA failed" );
       }
       template <typename Type>
-      Type gen()
+      Type gen() const
       {
         Type ret = 0;
 
