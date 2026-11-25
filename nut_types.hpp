@@ -22,6 +22,7 @@
 # include <errno.h>
 # include <sys/types.h>
 # include <sys/eventfd.h>
+# include <sys/random.h> // getrandom
 # include <poll.h>
 # include <inttypes.h>
 # include <unistd.h> // sleep
