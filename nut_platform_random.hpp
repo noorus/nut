@@ -6,6 +6,8 @@ namespace nut {
 
   namespace platform {
 
+#ifdef NUT_PLATFORM_WINDOWS
+
     //! \class RandomGenerator
     //! Interface into platform-native cryptographically secure pseudo-random generator.
     class RandomGenerator {
@@ -33,6 +35,26 @@ namespace nut {
           CryptReleaseContext( provider_, 0 );
       }
     };
+
+#elif NUT_PLATFORM_LINUX
+
+    //! \class RandomGenerator
+    //! Interface into platform-native cryptographically secure pseudo-random generator.
+    class RandomGenerator {
+    public:
+      template <typename Type>
+      Type gen() const
+      {
+        Type ret = 0;
+
+        if ( !getrandom( reinterpret_cast<void*>( &ret ), sizeof( Type ), 0 ) )
+          NUT_RUNTIME_EXCEPT( "getrandom failed" );
+
+        return ret;
+      }
+    };
+
+#endif
 
     //! \class RandomSeedSequence
     //! STL-compatible seed sequence adapter for the RandomGenerator class.
