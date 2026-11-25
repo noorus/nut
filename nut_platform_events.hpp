@@ -6,6 +6,8 @@ namespace nut {
 
   namespace platform {
 
+#ifdef NUT_PLATFORM_WINDOWS
+
     using NativeEventType = HANDLE;
 
     //! \class Event
@@ -67,6 +69,75 @@ namespace nut {
     {
       return waitForEvents( vector<NativeEventType>( events.begin(), events.end() ), milliseconds, waitForAll );
     }
+
+#elif NUT_PLATFORM_LINUX
+
+    using NativeEventType = int;
+
+    //! \class Event
+    //! Native event type abstraction for the current platform.
+    class Event {
+    public:
+      constexpr static uint32_t c_infinity = 0xffffffff;
+    private:
+      NativeEventType handle_ = -1;
+    public:
+      Event( bool initialState = false )
+      {
+        handle_ = eventfd( initialState ? 1 : 0, EFD_NONBLOCK | EFD_CLOEXEC );
+        if ( handle_ == -1 )
+          NUT_RUNTIME_EXCEPT( "Event creation failed" );
+      }
+      inline void set()
+      {
+        uint64_t v = 1;
+        if ( write( handle_, &v, sizeof( v ) ) != sizeof( v ) )
+          NUT_RUNTIME_EXCEPT( "eventfd write failed" );
+      }
+      inline void reset()
+      {
+        uint64_t v = 0;
+        if ( read( handle_, &v, sizeof( v ) ) < 0 && errno != EAGAIN )
+          NUT_RUNTIME_EXCEPT( "eventfd read failed" );
+      }
+      inline bool wait( uint32_t milliseconds = c_infinity ) const
+      {
+        pollfd p;
+        int ret = -1;
+        errno = EINTR;
+        while ( ret < 0 && errno == EINTR )
+        {
+          p.fd = handle_;
+          p.events = POLLIN;
+          p.revents = 0;
+          auto to = ( milliseconds == c_infinity ? -1 : static_cast<int>( milliseconds ) );
+          ret = poll( &p, 1, to );
+        }
+        if ( ret < 0 )
+          return false;
+        if ( ret == 0 || !( p.revents & POLLIN ) )
+        {
+          errno = 0;
+          return false;
+        }
+        return true;
+      }
+      //  inline bool check() const
+      //  {
+      //    return ( WaitForSingleObject( handle_, 0 ) == WAIT_OBJECT_0 );
+      //  }
+      inline NativeEventType get() const
+      {
+        return handle_;
+      }
+      ~Event()
+      {
+        if ( handle_ != -1 )
+          close( handle_ );
+      }
+    };
+
+#endif
 
   }
 
