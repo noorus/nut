@@ -23,6 +23,7 @@
 # include <sys/types.h>
 # include <sys/eventfd.h>
 # include <sys/random.h> // getrandom
+# include <pthread.h>
 # include <poll.h>
 # include <inttypes.h>
 # include <unistd.h> // sleep
