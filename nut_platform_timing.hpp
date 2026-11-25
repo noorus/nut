@@ -24,6 +24,8 @@ namespace nut {
       return ( li.QuadPart - c_unixTimeStart ) / c_ticksPerSecond;
     }
 
+#ifdef NUT_PLATFORM_WINDOWS
+
     //! \class PerformanceTimer
     //! Native performance timer implementation for high-precision timing of tasks.
     class PerformanceTimer {
@@ -53,9 +55,6 @@ namespace nut {
 
     //! \class PerformanceClock
     //! Native performance clock implementation for high-precision loop delta timing.
-
-#ifdef NUT_PLATFORM_WINDOWS
-
     class PerformanceClock {
     private:
       LARGE_INTEGER current_ { { 0, 0 } };
@@ -112,34 +111,62 @@ namespace nut {
 # define SEC_TO_NANOSEC( sec ) ( ( sec ) * ( 1000LL * 1000LL * 1000LL ) )
 # define NANOSEC_TO_SEC( nanosec ) ( ( nanosec ) / ( 1000LL * 1000LL * 1000LL ) )
 
-    class PerformanceClock {
-    private:
-      int64_t current_ = 0;
+    class ClockUsingBase {
+    protected:
       double frequency_ = 0.0;
-      double inverse_ = 0.0;
     public:
-      PerformanceClock()
+      ClockUsingBase()
       {
         timespec res_s;
         if ( clock_getres( CLOCK_MONOTONIC_RAW, &res_s ) < 0 )
           NUT_RUNTIME_EXCEPT( "clock_getres failed" );
         int64_t res = SEC_TO_NANOSEC( res_s.tv_sec ) + res_s.tv_nsec;
-        frequency_ = static_cast<double>( SEC_TO_NANOSEC( 1 ) );
+        frequency_ = static_cast<double>( SEC_TO_NANOSEC( res ) );
       }
-      //! Call this once before entering whatever loop is going to then keep calling update()
-      inline void init()
+      inline int64_t getTime()
       {
         timespec val_s;
         if ( clock_gettime( CLOCK_MONOTONIC_RAW, &val_s ) < 0 )
           NUT_RUNTIME_EXCEPT( "clock_gettime failed" );
-        current_ = SEC_TO_NANOSEC( val_s.tv_sec ) + val_s.tv_nsec;
+        return SEC_TO_NANOSEC( val_s.tv_sec ) + val_s.tv_nsec;
+      }
+    };
+
+    //! \class PerformanceTimer
+    //! Native performance timer implementation for high-precision timing of tasks.
+    class PerformanceTimer: public ClockUsingBase {
+    private:
+      int64_t time_ = 0;
+    public:
+      void start()
+      {
+        time_ = getTime();
+      }
+      double stop()
+      {
+        auto newTime = getTime();
+        auto delta = ( newTime - time_ ) * 1000000;
+        delta /= frequency_;
+        double ms = (double)delta / 1000.0;
+        return ms;
+      }
+    };
+
+    //! \class PerformanceClock
+    //! Native performance clock implementation for high-precision loop delta timing.
+    class PerformanceClock: public ClockUsingBase {
+    private:
+      int64_t current_ = 0;
+    public:
+      //! Call this once before entering whatever loop is going to then keep calling update()
+      inline void init()
+      {
+        current_ = getTime();
       }
       //! Returns the time in seconds since the last call to update()
       inline double update()
       {
-        timespec val_s;
-        clock_gettime( CLOCK_MONOTONIC_RAW, &val_s );
-        int64_t new_ = SEC_TO_NANOSEC( val_s.tv_sec ) + val_s.tv_nsec;
+        auto new_ = getTime();
         auto delta = ( new_ - current_ );
         current_ = new_;
         return static_cast<double>( delta ) / frequency_;
@@ -147,10 +174,7 @@ namespace nut {
       //! Returns the time in seconds since the last call to update() without "resetting" the counter
       inline double peek()
       {
-        timespec val_s;
-        clock_gettime( CLOCK_MONOTONIC_RAW, &val_s );
-        int64_t new_ = SEC_TO_NANOSEC( val_s.tv_sec ) + val_s.tv_nsec;
-        auto delta = ( new_ - current_ );
+        auto delta = ( getTime() - current_ );
         return static_cast<double>( delta ) / frequency_;
       }
     };
