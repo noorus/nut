@@ -6,6 +6,8 @@ namespace nut {
 
   namespace platform {
 
+#ifdef NUT_PLATFORM_WINDOWS
+
     #pragma warning( push )
     #pragma warning( disable : 26110 )
 
@@ -23,6 +25,46 @@ namespace nut {
     };
 
     #pragma warning( pop )
+
+#elif NUT_PLATFORM_LINUX
+
+    //! \class RWLock
+    //! Reader-writer lock class for easy portability.
+    class RWLock {
+    protected:
+      mutable pthread_rwlock_t lock_ = PTHREAD_RWLOCK_INITIALIZER;
+    public:
+      RWLock()
+      {
+        //if ( pthread_rwlock_init( &lock_, nullptr ) )
+        //  NUT_RUNTIME_EXCEPT( "pthread_rwlock_init failed" );
+      }
+      ~RWLock()
+      {
+        pthread_rwlock_destroy( &lock_ );
+      }
+      inline void lock() const
+      {
+        if ( pthread_rwlock_wrlock( &lock_ ) )
+          NUT_RUNTIME_EXCEPT( "pthread_rwlock_wrlock failed" );
+      }
+      inline void unlock() const
+      {
+        if ( pthread_rwlock_unlock( &lock_ ) )
+          NUT_RUNTIME_EXCEPT( "pthread_rwlock_unlock failed" );
+      }
+      inline void lockShared() const
+      {
+        if ( pthread_rwlock_rdlock( &lock_ ) )
+          NUT_RUNTIME_EXCEPT( "pthread_rwlock_rdlock failed" );
+      }
+      inline void unlockShared() const
+      {
+        unlock();
+      }
+    };
+
+#endif
 
   }
 
