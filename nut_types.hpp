@@ -19,7 +19,10 @@
 # include <windows.h>
 # include <strsafe.h>
 #elif NUT_PLATFORM_LINUX
+# include <errno.h>
 # include <sys/types.h>
+# include <sys/eventfd.h>
+# include <poll.h>
 # include <inttypes.h>
 # include <unistd.h> // sleep
 # include <time.h> // clock
